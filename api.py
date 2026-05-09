@@ -93,12 +93,3 @@ def recall(lote_id: str):
         ]
     }
 
-# ─── ROTA 6: Registar recolha e transporte ──────────────────
-@app.post("/recolha")
-def recolha_material(
-    id_contentor: str,
-    ponto_origem: str,
-    id_profissional: str
-):
-    resultado = registar_recolha(id_contentor, ponto_origem, id_profissional)
-    return resultado
