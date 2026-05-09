@@ -40,5 +40,5 @@ print("\n" + "=" * 40)
 print("Fase de recolha concluída. Material pronto para lavagem/esterilização.")
 print("=" * 40)
 
-dados_recolha("RECOLHIDO",GRAI, GLN, GSRN)  # Guardar um ciclo de recolha para rastreabilidade
+registar_recolha_log("RECOLHIDO",GRAI, GLN, GSRN)  # Guardar um ciclo de recolha para rastreabilidade
 ver_historico()
