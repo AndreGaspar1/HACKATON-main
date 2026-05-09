@@ -10,9 +10,9 @@ def criar_base_dados():
         CREATE TABLE IF NOT EXISTS recolhas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp_recolha TEXT,
-            GRAI TEXT,
-            GLN TEXT,
-            GSRN TEXT
+            id_contentor TEXT,
+            ponto_origem TEXT,
+            id_profissional TEXT
         )
     """)
 # 2 Tabela de descontaminação 
@@ -52,12 +52,12 @@ def criar_base_dados():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS utilizacoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            gsrn_utente TEXT,
-            gsrn_profissional TEXT,
+            id_utente TEXT,
+            id_profissional TEXT,
             gtin TEXT,
             lote_id TEXT,
             timestamp TEXT,
-            gln_origem TEXT
+            ponto_origem TEXT
         )
     """)
 
@@ -65,22 +65,22 @@ def criar_base_dados():
     conn.close()
     print("Base de dados pronta.")
 
-def registar_recolha(GRAI, GLN, GSRN):
+def registar_recolha(id_contentor, ponto_origem, id_profissional):
     conn = sqlite3.connect("cme.db")
     cursor = conn.cursor()
     
     # A hora da recolha é gerada automaticamente no momento da inserção
     cursor.execute("""
-        INSERT INTO recolhas (timestamp_recolha, GRAI, GLN, GSRN)
+        INSERT INTO recolhas (timestamp_recolha, id_contentor, ponto_origem, id_profissional)
         VALUES (?, ?, ?, ?)
-    """, (datetime.now().isoformat(), GRAI, GLN, GSRN))
+    """, (datetime.now().isoformat(), id_contentor, ponto_origem, id_profissional))
     
     conn.commit()
     conn.close()
     
-    return {"sucesso": True, "motivo": f"Recolha do contentor {GRAI} registada."}
+    return {"sucesso": True, "motivo": f"Recolha do contentor {id_contentor} registada."}
 #base de dados para recolha e transporte
-def registar_recolha_log(GRAI, GLN, GSRN):
+def registar_recolha_log(id_contentor, ponto_origem, id_profissional):
     """
     Regista o evento de recolha na tabela de recolhas.
     Esta função aceita exclusivamente strings, ao contrário da guardar_ciclo.
@@ -92,13 +92,13 @@ def registar_recolha_log(GRAI, GLN, GSRN):
     timestamp = datetime.now().isoformat()
     
     cursor.execute("""
-        INSERT INTO recolhas (timestamp_recolha, GRAI, GLN, GSRN)
+        INSERT INTO recolhas (timestamp_recolha, id_contentor, ponto_origem, id_profissional)
         VALUES (?, ?, ?, ?)
-    """, (timestamp, GRAI, GLN, GSRN))
+    """, (timestamp, id_contentor, ponto_origem, id_profissional))
     
     conn.commit()
     conn.close()
-    print(f"Log de recolha guardado: Contentor {GRAI} vindo de {GLN}.")
+    print(f"Log de recolha guardado: Contentor {id_contentor} vindo de {ponto_origem}.")
 #base de dados esterilização
 def guardar_ciclo(lote_id, temperatura, pressao, resultado):
     conn = sqlite3.connect("cme.db")
@@ -121,7 +121,7 @@ def ver_historico():
     for r in registos:
         print(f"ID:{r[0]} | Lote:{r[1]} | {r[2]} | {r[3]}°C | {r[5]}")
 
-def registar_utilizacao(gsrn_utente, gsrn_profissional, gtin, lote_id, gln_origem):
+def registar_utilizacao(id_utente, id_profissional, gtin, lote_id, ponto_origem):
     conn = sqlite3.connect("cme.db")
     cursor = conn.cursor()
 
@@ -140,9 +140,9 @@ def registar_utilizacao(gsrn_utente, gsrn_profissional, gtin, lote_id, gln_orige
     from datetime import datetime
     cursor.execute("""
         INSERT INTO utilizacoes 
-        (gsrn_utente, gsrn_profissional, gtin, lote_id, timestamp, gln_origem)
+        (id_utente, id_profissional, gtin, lote_id, timestamp, ponto_origem)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, (gsrn_utente, gsrn_profissional, gtin, lote_id, datetime.now().isoformat(), gln_origem))
+    """, (id_utente, id_profissional, gtin, lote_id, datetime.now().isoformat(), ponto_origem))
     conn.commit()
     conn.close()
     return {"permitido": True, "motivo": "Ciclo conforme — uso autorizado"}
