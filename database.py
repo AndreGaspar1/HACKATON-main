@@ -5,17 +5,26 @@ def criar_base_dados():
     conn = sqlite3.connect("cme.db")
     cursor = conn.cursor()
 
-# Tabela de recolha e transporte (A origem)
+# 1 Tabela de recolha e transporte (A origem)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS recolhas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp_recolha TEXT,
-            id_contentor TEXT,
-            ponto_origem TEXT,
-            id_profissional TEXT
+            GRAI TEXT,
+            GLN TEXT,
+            GSRN TEXT
         )
     """)
-
+# 2 Tabela de descontaminação 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS descontaminacao (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lote_id TEXT,
+            timestamp TEXT,
+            temp_descontaminacao REAL,
+            pressao_descontaminacao REAL
+        )
+    """)
     # Tabela original dos ciclos
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS ciclos (
@@ -56,21 +65,41 @@ def criar_base_dados():
     conn.close()
     print("Base de dados pronta.")
 
-def registar_recolha(id_contentor, ponto_origem, id_profissional):
+def registar_recolha(GRAI, GLN, GSRN):
     conn = sqlite3.connect("cme.db")
     cursor = conn.cursor()
     
     # A hora da recolha é gerada automaticamente no momento da inserção
     cursor.execute("""
-        INSERT INTO recolhas (timestamp_recolha, id_contentor, ponto_origem, id_profissional)
+        INSERT INTO recolhas (timestamp_recolha, GRAI, GLN, GSRN)
         VALUES (?, ?, ?, ?)
-    """, (datetime.now().isoformat(), id_contentor, ponto_origem, id_profissional))
+    """, (datetime.now().isoformat(), GRAI, GLN, GSRN))
     
     conn.commit()
     conn.close()
     
-    return {"sucesso": True, "motivo": f"Recolha do contentor {id_contentor} registada."}
-
+    return {"sucesso": True, "motivo": f"Recolha do contentor {GRAI} registada."}
+#base de dados para recolha e transporte
+def registar_recolha_log(GRAI, GLN, GSRN):
+    """
+    Regista o evento de recolha na tabela de recolhas.
+    Esta função aceita exclusivamente strings, ao contrário da guardar_ciclo.
+    """
+    conn = sqlite3.connect("cme.db")
+    cursor = conn.cursor()
+    
+    # A hora é gerada automaticamente
+    timestamp = datetime.now().isoformat()
+    
+    cursor.execute("""
+        INSERT INTO recolhas (timestamp_recolha, GRAI, GLN, GSRN)
+        VALUES (?, ?, ?, ?)
+    """, (timestamp, GRAI, GLN, GSRN))
+    
+    conn.commit()
+    conn.close()
+    print(f"Log de recolha guardado: Contentor {GRAI} vindo de {GLN}.")
+#base de dados esterilização
 def guardar_ciclo(lote_id, temperatura, pressao, resultado):
     conn = sqlite3.connect("cme.db")
     cursor = conn.cursor()
