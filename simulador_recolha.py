@@ -1,4 +1,4 @@
-from database import criar_base_dados, registar_recolha, registar_recolha_log, ver_historico
+from database import criar_base_dados, registar_recolha, registar_recolha_log, ver_historico_recolhas
 import random
 import time
 
@@ -41,4 +41,5 @@ print("Fase de recolha concluída. Material pronto para lavagem/esterilização.
 print("=" * 40)
 
 registar_recolha_log(id_contentor, ponto_origem, id_profissional)  # Guardar um ciclo de recolha para rastreabilidade
-ver_historico()
+
+ver_historico_recolhas()

@@ -1,0 +1,51 @@
+from database import criar_base_dados, guardar_descontaminacao, ver_historico_descontaminacao
+import random
+import time
+
+print("Simulador de Descontaminação Iniciado")
+print("--" * 40)
+
+# Garante a integridade da estrutura relacional
+criar_base_dados()
+
+# Definição das fases de uma lavadora-desinfetadora termoquímica
+fases = [
+    {"nome": "Pré-lavagem", "temp_alvo": 30.0, "pressao_alvo": 1.5, "duracao": 3},
+    {"nome": "Lavagem Enzimática", "temp_alvo": 45.0, "pressao_alvo": 2.5, "duracao": 5},
+    {"nome": "Enxaguamento", "temp_alvo": 40.0, "pressao_alvo": 2.0, "duracao": 3},
+    {"nome": "Desinfeção Térmica", "temp_alvo": 90.0, "pressao_alvo": 1.0, "duracao": 6},
+    {"nome": "Secagem", "temp_alvo": 70.0, "pressao_alvo": 1.0, "duracao": 4}
+]
+
+lote_id = f"LOTE-{random.randint(1000, 9999)}"
+temp_maxima = 0.0
+pressao_acumulada = 0.0
+
+for fase in fases:
+    print(f"\n>> Fase: {fase['nome']}")
+    
+    # Injeção de variação nas leituras sensoriais
+    temp_real = fase["temp_alvo"] + random.uniform(-1.5, 1.5)
+    pressao_real = fase["pressao_alvo"] + random.uniform(-0.2, 0.2)
+    
+    print(f"   Temperatura : {temp_real:.1f} °C")
+    print(f"   Pressão da água : {pressao_real:.2f} bar")
+    
+    if temp_real > temp_maxima:
+        temp_maxima = temp_real
+    
+    pressao_acumulada += pressao_real
+    
+    time.sleep(fase["duracao"])
+
+pressao_media = pressao_acumulada / len(fases)
+
+print("\n" + "=" * 40)
+print("Ciclo de lavagem/descontaminação concluído.")
+print("=" * 40)
+
+# Persistência de dados
+guardar_descontaminacao(lote_id, temp_maxima, pressao_media)
+
+# Validação do registo visualizando o histórico da tabela correta
+ver_historico_descontaminacao()
