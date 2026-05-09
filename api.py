@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from database import criar_base_dados, guardar_ciclo, ver_historico, registar_utilizacao
+from database import criar_base_dados, guardar_ciclo, ver_historico, registar_utilizacao, registar_recolha
 import sqlite3
 
 app = FastAPI(title="CME - Sistema de Rastreabilidade")
@@ -92,3 +92,13 @@ def recall(lote_id: str):
             for r in registos
         ]
     }
+
+# ─── ROTA 6: Registar recolha e transporte ──────────────────
+@app.post("/recolha")
+def recolha_material(
+    id_contentor: str,
+    ponto_origem: str,
+    id_profissional: str
+):
+    resultado = registar_recolha(id_contentor, ponto_origem, id_profissional)
+    return resultado

@@ -5,6 +5,17 @@ def criar_base_dados():
     conn = sqlite3.connect("cme.db")
     cursor = conn.cursor()
 
+# Tabela de recolha e transporte (A origem)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS recolhas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp_recolha TEXT,
+            id_contentor TEXT,
+            ponto_origem TEXT,
+            id_profissional TEXT
+        )
+    """)
+
     # Tabela original dos ciclos
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS ciclos (
@@ -44,6 +55,21 @@ def criar_base_dados():
     conn.commit()
     conn.close()
     print("Base de dados pronta.")
+
+def registar_recolha(id_contentor, ponto_origem, id_profissional):
+    conn = sqlite3.connect("cme.db")
+    cursor = conn.cursor()
+    
+    # A hora da recolha é gerada automaticamente no momento da inserção
+    cursor.execute("""
+        INSERT INTO recolhas (timestamp_recolha, id_contentor, ponto_origem, id_profissional)
+        VALUES (?, ?, ?, ?)
+    """, (datetime.now().isoformat(), id_contentor, ponto_origem, id_profissional))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"sucesso": True, "motivo": f"Recolha do contentor {id_contentor} registada."}
 
 def guardar_ciclo(lote_id, temperatura, pressao, resultado):
     conn = sqlite3.connect("cme.db")
