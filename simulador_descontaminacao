@@ -1,20 +1,30 @@
-from database import criar_base_dados, guardar_descontaminacao, ver_historico_descontaminacao
 import random
 import time
+from database import criar_base_dados, guardar_descontaminacao, ver_historico_descontaminacao
 
-print("Simulador de Descontaminação Iniciado")
+def algoritmo_whiteley(valor_atp):
+    """
+    Simulação do Algoritmo de Whiteley para validação de limpeza.
+    Target de conformidade > 71%[cite: 567].
+    """
+    if valor_atp < 100:
+        return "APROVADO (Limpeza Eficaz)"
+    else:
+        return "FALHA (Bioburden Detetado)"
+
+print("Simulador de Descontaminação Avançado (Requisitos 4.2)")
 print("--" * 40)
 
-# Garante a integridade da estrutura relacional
 criar_base_dados()
 
-# Definição das fases de uma lavadora-desinfetadora termoquímica
+# Requisitos 4.2: Validação de Diluição e Tempo de Imersão [cite: 547]
+detergente_diluicao_ok = 1 # Simulação de validação de rácio de diluição
+tempo_imersao = random.randint(15, 30) # Tempo em minutos
+
 fases = [
-    {"nome": "Pré-lavagem", "temp_alvo": 30.0, "pressao_alvo": 1.5, "duracao": 3},
-    {"nome": "Lavagem Enzimática", "temp_alvo": 45.0, "pressao_alvo": 2.5, "duracao": 5},
-    {"nome": "Enxaguamento", "temp_alvo": 40.0, "pressao_alvo": 2.0, "duracao": 3},
-    {"nome": "Desinfeção Térmica", "temp_alvo": 90.0, "pressao_alvo": 1.0, "duracao": 6},
-    {"nome": "Secagem", "temp_alvo": 70.0, "pressao_alvo": 1.0, "duracao": 4}
+    {"nome": "Pré-lavagem", "temp_alvo": 30.0, "pressao_alvo": 1.5, "duracao": 2},
+    {"nome": "Lavagem Enzimática", "temp_alvo": 45.0, "pressao_alvo": 2.5, "duracao": 3},
+    {"nome": "Desinfeção Térmica", "temp_alvo": 90.0, "pressao_alvo": 1.0, "duracao": 4}
 ]
 
 lote_id = f"LOTE-{random.randint(1000, 9999)}"
@@ -23,29 +33,34 @@ pressao_acumulada = 0.0
 
 for fase in fases:
     print(f"\n>> Fase: {fase['nome']}")
-    
-    # Injeção de variação nas leituras sensoriais
-    temp_real = fase["temp_alvo"] + random.uniform(-1.5, 1.5)
-    pressao_real = fase["pressao_alvo"] + random.uniform(-0.2, 0.2)
+    temp_real = fase["temp_alvo"] + random.uniform(-1.0, 1.0)
+    pressao_real = fase["pressao_alvo"] + random.uniform(-0.1, 0.1)
     
     print(f"   Temperatura : {temp_real:.1f} °C")
-    print(f"   Pressão da água : {pressao_real:.2f} bar")
-    
-    if temp_real > temp_maxima:
-        temp_maxima = temp_real
-    
+    if temp_real > temp_maxima: temp_maxima = temp_real
     pressao_acumulada += pressao_real
-    
-    time.sleep(fase["duracao"])
+    time.sleep(1)
 
-pressao_media = pressao_acumulada / len(fases)
+# Validação Científica após limpeza 
+valor_atp = random.uniform(10, 150) # Unidades Relativas de Luz (RLU)
+resultado_limpeza = algoritmo_whiteley(valor_atp)
 
 print("\n" + "=" * 40)
-print("Ciclo de lavagem/descontaminação concluído.")
+print(f"RESULTADO DO LOTE: {lote_id}")
+print(f"Diluição Detergente: {'Conforme' if detergente_diluicao_ok else 'Não Conforme'}")
+print(f"Tempo Imersão: {tempo_imersao} min")
+print(f"Teste ATP: {valor_atp:.1f} RLU -> {resultado_limpeza}")
 print("=" * 40)
 
-# Persistência de dados
-guardar_descontaminacao(lote_id, temp_maxima, pressao_media)
+# Persistência com novos requisitos
+guardar_descontaminacao(
+    lote_id, 
+    temp_maxima, 
+    pressao_acumulada / len(fases), 
+    detergente_diluicao_ok, 
+    tempo_imersao, 
+    valor_atp, 
+    resultado_limpeza
+)
 
-# Validação do registo visualizando o histórico da tabela correta
 ver_historico_descontaminacao()

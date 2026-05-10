@@ -1,11 +1,11 @@
-from database import criar_tabelas_esterilizacao, guardar_ciclo_esterilizacao, ver_historico_esterilizacao
+from database import criar_base_dados, guardar_ciclo_esterilizacao, ver_historico_esterilizacao
 import random
 import time
 
 print("Simulador de Esterilização e Validação Iniciado")
 print("--" * 40)
 
-criar_tabelas_esterilizacao()
+criar_base_dados()
 
 # Identificação do equipamento (GIAI ou GLN)
 autoclave_gln = "GLN-AUTOCLAVE-01"

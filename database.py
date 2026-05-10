@@ -15,16 +15,19 @@ def criar_base_dados():
             id_profissional TEXT
         )
     """)
-# 2 Tabela de descontaminação 
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS descontaminacao (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            lote_id TEXT,
-            timestamp TEXT, 
-            temp_descontaminacao REAL,
-            pressao_descontaminacao REAL
-        )
-    """)
+    CREATE TABLE IF NOT EXISTS descontaminacao (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lote_id TEXT,
+        timestamp TEXT, 
+        temp_descontaminacao REAL,
+        pressao_descontaminacao REAL,
+        detergente_diluicao_ok INTEGER, -- 1 para Sim, 0 para Não
+        tempo_imersao_minutos INTEGER,
+        valor_atp REAL,
+        resultado_whiteley TEXT
+    )
+""")
 # 3 Tabela inspeção e embalagem
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS embalagem (
@@ -58,6 +61,31 @@ def criar_base_dados():
             lote_id TEXT,
             gtin TEXT,
             numero_serie TEXT
+        )
+    """)
+# 6 Tabela de armazenamento e distribuição
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS armazenamento (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        gtin TEXT,
+        numero_serie TEXT,
+        lote_id TEXT,
+        data_validade TEXT,
+        gln_localizacao TEXT,
+        estado TEXT DEFAULT 'Em Armazém',
+        timestamp TEXT
+    )
+""")
+# 7 Tabela de Utilização Clínica (Ligação Utente - Dispositivo)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS utilizacoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_utente TEXT,
+            id_profissional TEXT,
+            gtin TEXT,
+            lote_id TEXT,
+            timestamp TEXT,
+            ponto_origem TEXT
         )
     """)
 #  Tabela original dos ciclos
@@ -183,6 +211,7 @@ def registar_utilizacao(id_utente, id_profissional, gtin, lote_id, ponto_origem)
     return {"permitido": True, "motivo": "Ciclo conforme — uso autorizado"}
 
 def ver_historico_recolhas():
+
     conn = sqlite3.connect("cme.db")
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM recolhas")
@@ -191,19 +220,20 @@ def ver_historico_recolhas():
     print("\n--- Histórico de Recolhas ---")
     for r in registos:
         print(f"ID:{r[0]} | Data/Hora:{r[1]} | Contentor:{r[2]} | Origem:{r[3]} | Profissional:{r[4]}")
-
-def guardar_descontaminacao(lote_id, temperatura, pressao):
-    """Regista os parâmetros finais do ciclo de descontaminação na base de dados."""
+# Atualizar a função de gravação:
+def guardar_descontaminacao(lote_id, temperatura, pressao, diluicao_ok, tempo_imersao, valor_atp, resultado_whiteley):
     conn = sqlite3.connect("cme.db")
     cursor = conn.cursor()
-    from datetime import datetime
     cursor.execute("""
-        INSERT INTO descontaminacao (lote_id, timestamp, temp_descontaminacao, pressao_descontaminacao)
-        VALUES (?, ?, ?, ?)
-    """, (lote_id, datetime.now().isoformat(), temperatura, pressao))
+        INSERT INTO descontaminacao (
+            lote_id, timestamp, temp_descontaminacao, pressao_descontaminacao, 
+            detergente_diluicao_ok, tempo_imersao_minutos, valor_atp, resultado_whiteley
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (lote_id, datetime.now().isoformat(), temperatura, pressao, diluicao_ok, tempo_imersao, valor_atp, resultado_whiteley))
     conn.commit()
     conn.close()
-    print(f"Registo de descontaminação do lote {lote_id} efetuado.")
+
 
 def ver_historico_descontaminacao():
     """Consulta e imprime o histórico de lavagem/descontaminação."""
@@ -263,6 +293,8 @@ def guardar_ciclo_esterilizacao(lote_id, autoclave_id, temp, pressao, ind_quimic
     conn.close()
 
 def ver_historico_esterilizacao():
+
+
     import sqlite3
     conn = sqlite3.connect("cme.db")
     cursor = conn.cursor()
@@ -279,3 +311,100 @@ def ver_historico_esterilizacao():
         print(f"   ↳ Carga ({len(itens)} itens): {itens}")
         
     conn.close()
+
+def registar_armazenamento(gtin, serial, lote, validade, gln):
+    """Regista a entrada de material no armazém com localização específica."""
+    conn = sqlite3.connect("cme.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO armazenamento (gtin, numero_serie, lote_id, data_validade, gln_localizacao, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (gtin, serial, lote, validade, gln, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+
+def obter_proximo_fefo():
+    """Identifica o item com validade mais curta disponível em armazém."""
+    conn = sqlite3.connect("cme.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, gtin, numero_serie, lote_id, data_validade, gln_localizacao 
+        FROM armazenamento 
+        WHERE estado = 'Em Armazém'
+        ORDER BY data_validade ASC LIMIT 1
+    """)
+    registo = cursor.fetchone()
+    conn.close()
+    return registo
+
+def registar_expedicao(id_armazenamento):
+    """Atualiza o estado do material para expedido."""
+    conn = sqlite3.connect("cme.db")
+    cursor = conn.cursor()
+    cursor.execute("UPDATE armazenamento SET estado = 'Expedido' WHERE id = ?", (id_armazenamento,))
+    conn.commit()
+    conn.close()
+def ver_historico_armazenamento():
+    """Consulta e imprime o histórico de entrada e saída do armazém."""
+    import sqlite3
+    conn = sqlite3.connect("cme.db")
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id, numero_serie, lote_id, data_validade, gln_localizacao, estado, timestamp FROM armazenamento")
+    registos = cursor.fetchall()
+    conn.close()
+    
+    print("\n--- Histórico de Armazenamento e Distribuição ---")
+    if not registos:
+        print("Nenhum registo encontrado.")
+        return
+        
+    for r in registos:
+        print(f"ID:{r[0]} | SN:{r[1]} | Lote:{r[2]} | Validade:{r[3]} | GLN:{r[4]} | Estado:{r[5]} | Data:{r[6]}")
+
+def baixar_inventario_esteril(gtin, serial):
+    """
+    Remove o dispositivo do inventário ativo alterando o seu estado.
+    Retorna o lote associado para efeitos de validação de segurança (Hard Stop).
+    """
+    import sqlite3
+    conn = sqlite3.connect("cme.db")
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT lote_id FROM armazenamento 
+        WHERE gtin = ? AND numero_serie = ? AND estado = 'Expedido'
+    """, (gtin, serial))
+    registo = cursor.fetchone()
+    
+    if registo:
+        lote_id = registo[0]
+        cursor.execute("""
+            UPDATE armazenamento 
+            SET estado = 'Utilizado Clinicamente' 
+            WHERE gtin = ? AND numero_serie = ?
+        """, (gtin, serial))
+        conn.commit()
+        conn.close()
+        return lote_id
+        
+    conn.close()
+    return None
+
+def ver_historico_utilizacao():
+    """Consulta e expõe os registos de ligação entre utente e dispositivo."""
+    import sqlite3
+    conn = sqlite3.connect("cme.db")
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id, id_utente, id_profissional, gtin, lote_id, timestamp, ponto_origem FROM utilizacoes")
+    registos = cursor.fetchall()
+    conn.close()
+    
+    print("\n--- Histórico de Utilização Clínica (Registo de Saúde) ---")
+    if not registos:
+        print("Sem registos de utilização.")
+        return
+        
+    for r in registos:
+        print(f"ID:{r[0]} | GSRN(Utente):{r[1]} | GSRN(Profissional):{r[2]} | GTIN:{r[3]} | Lote:{r[4]} | Local:{r[6]} | Data:{r[5]}")
